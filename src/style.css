@@ -1,0 +1,237 @@
+:root {
+  --navi-black: #000000;
+  --navi-mint: #39ca8a;
+  --navi-lime: #c4ff72;
+  --navi-ink: #474742;
+  --navi-dark: #1c1c1f;
+  --navi-white: #ffffff;
+  --navi-secondary: rgba(255, 255, 255, 0.6);
+  --navi-danger: #ff453a;
+
+  --friend-mint: #8cf299;
+  --friend-pink: #fa73cc;
+  --friend-cyan: #66ccff;
+  --friend-amber: #ffb84d;
+
+  --font-heading: "Sarabun", -apple-system, system-ui, sans-serif;
+  --font-pixel: "Pixelify Sans", "Sarabun", monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--navi-black);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: var(--font-heading);
+  color: var(--navi-white);
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+button,
+input {
+  font-family: var(--font-heading);
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--navi-black);
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  text-align: center;
+}
+
+.screen--fill {
+  padding: 0;
+}
+
+.logo {
+  width: 120px;
+  height: auto;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--navi-white);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: var(--navi-secondary);
+  margin: 0;
+  max-width: 320px;
+  line-height: 1.4;
+}
+
+.pill-button {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 14px 32px;
+  font-size: 17px;
+  font-weight: 600;
+  background: var(--navi-mint);
+  color: #04140c;
+  min-width: 200px;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.pill-button:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+.pill-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+
+.pill-button--secondary {
+  background: transparent;
+  color: var(--navi-white);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+}
+
+.pill-button--danger {
+  background: transparent;
+  color: var(--navi-danger);
+  border: 1.5px solid rgba(255, 69, 58, 0.5);
+}
+
+.field {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.field label {
+  font-size: 13px;
+  color: var(--navi-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 17px;
+  color: var(--navi-white);
+  outline: none;
+}
+
+.field input:focus {
+  border-color: var(--navi-mint);
+}
+
+.role-toggle {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.role-toggle button {
+  flex: 1;
+  appearance: none;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  color: var(--navi-secondary);
+  padding: 12px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.role-toggle button.active {
+  border-color: var(--navi-mint);
+  color: var(--navi-mint);
+  background: rgba(57, 202, 138, 0.12);
+}
+
+.avatar {
+  border-radius: 999px;
+  background: var(--navi-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: var(--navi-white);
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+}
+
+.pulse-icon {
+  animation: navi-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes navi-pulse {
+  0%,
+  100% {
+    transform: scale(0.9);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--navi-mint);
+  animation: navi-spin 0.8s linear infinite;
+}
+
+@keyframes navi-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error-text {
+  color: var(--navi-danger);
+  font-size: 14px;
+  max-width: 300px;
+}
