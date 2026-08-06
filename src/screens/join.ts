@@ -78,6 +78,7 @@ export function renderJoin(app: HTMLElement, onReady: () => void): void {
       session.channel = channel;
       renderWaiting(app, onReady);
     } catch (err) {
+      console.error("join failed:", err);
       errorEl.textContent = `Couldn't connect: ${describeError(err)}`;
       errorEl.style.display = "block";
       joinBtn.disabled = false;

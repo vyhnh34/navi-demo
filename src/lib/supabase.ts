@@ -21,6 +21,8 @@ export const supabase = createClient(url, anonKey, {
   realtime: {
     logger: (kind, msg, data) => {
       const line = `[rt:${kind}] ${msg}${data ? " " + safeStringify(data) : ""}`;
+      // eslint-disable-next-line no-console
+      console.log(line);
       realtimeLogListeners.forEach((fn) => fn(line));
     },
   },
