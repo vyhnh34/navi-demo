@@ -37,6 +37,14 @@ export function renderPermission(app: HTMLElement, onGranted: (opts: { hasCompas
     errorEl.style.display = "none";
     skipBtn.style.display = "none";
 
+    // Both calls must fire synchronously, back to back, in this same tick — iOS Safari's
+    // user-activation window for DeviceOrientationEvent.requestPermission() can expire
+    // while awaiting the Geolocation prompt's own system dialog, which silently skips the
+    // compass popup entirely (no dialog, just an immediate "denied"). Kicking off the
+    // orientation request here, before awaiting geolocation, keeps it inside the same tap
+    // and preserves the invocation order (location dialog first, compass dialog second).
+    const orientationPromise = isFinder ? requestOrientationPermission() : Promise.resolve(false);
+
     try {
       await requestGeolocationOnce();
     } catch (err) {
@@ -52,7 +60,7 @@ export function renderPermission(app: HTMLElement, onGranted: (opts: { hasCompas
       return;
     }
 
-    const hasCompass = await requestOrientationPermission();
+    const hasCompass = await orientationPromise;
     if (!hasCompass) {
       errorEl.textContent =
         "Compass access was denied. You can still navigate by distance alone, or enable Motion & Orientation Access in Settings and try again.";

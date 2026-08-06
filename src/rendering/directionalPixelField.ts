@@ -18,6 +18,10 @@ export class DirectionalPixelField {
   private canvas: HTMLCanvasElement;
   private angleDegrees = 0;
   private color = "#ffffff";
+  /** When set, one on-cell near the target direction is tinted this color instead of
+   * `color` — the funsie the Finder is currently heading toward, same as the native app's
+   * `guideColor` (there driven by `nextFunsieRarity.color`). */
+  private guideColor: string | null = null;
   private rafId: number | null = null;
   private startTime = performance.now();
 
@@ -46,6 +50,10 @@ export class DirectionalPixelField {
 
   setColor(cssColor: string): void {
     this.color = cssColor;
+  }
+
+  setGuideColor(cssColor: string | null): void {
+    this.guideColor = cssColor;
   }
 
   /** Low-confidence GPS reading: widen and soften the cluster rather than showing a
@@ -98,6 +106,15 @@ export class DirectionalPixelField {
     const centerY = (rows - 1) / 2;
     const norm = Math.max(centerX, centerY);
 
+    // Fixed anchor a bit shy of the outer edge of the mass, along the target bearing — used
+    // to pick which "on" cell becomes the guide pixel, so it sits inside the cluster rather
+    // than jumping to whichever cell happens to be on this frame.
+    const anchorX = centerX + dx * norm * 0.55;
+    const anchorY = centerY + dy * norm * 0.55;
+    let guideCol = -1;
+    let guideRow = -1;
+    let guideDistance = Infinity;
+
     ctx.fillStyle = this.color;
 
     for (let row = 0; row < rows; row++) {
@@ -112,8 +129,22 @@ export class DirectionalPixelField {
         const isOn = t >= this.coreThreshold ? true : Math.pow(t, this.falloffGamma) > stableNoise(col, row);
         if (!isOn) continue;
 
+        if (this.guideColor) {
+          const distance = Math.hypot(col - anchorX, row - anchorY);
+          if (distance < guideDistance) {
+            guideDistance = distance;
+            guideCol = col;
+            guideRow = row;
+          }
+        }
+
         ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
       }
+    }
+
+    if (this.guideColor && guideCol >= 0) {
+      ctx.fillStyle = this.guideColor;
+      ctx.fillRect(guideCol * cellSize, guideRow * cellSize, cellSize, cellSize);
     }
   }
 }

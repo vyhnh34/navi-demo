@@ -1,31 +1,19 @@
 import { session } from "../lib/state";
-import { watchPosition } from "../lib/geo";
-import { createThrottle } from "../lib/throttle";
-import type { HiderPositionEvent } from "../types";
+import { startHiderPositionSharing } from "../lib/hiderPosition";
+import { PixelDrawGrid } from "../rendering/pixelDrawGrid";
 
 /**
  * Hider's "wait" screen: full-bleed pixel doodle canvas, ported from the watch's
- * DrawFunsieView.swift as faithfully as possible — same 14-column grid, same random
- * single-color-per-drawing palette, same "sending clears the canvas, screen doesn't
- * change" behavior. Draws while waiting for the Finder to close the distance.
+ * DrawFunsieView.swift as faithfully as possible via the shared `PixelDrawGrid` — same
+ * 14-column grid, same random single-color-per-drawing palette, same "sending clears the
+ * canvas, screen doesn't change" behavior. Draws the reward funsie (handed over at Reunion,
+ * separate from anything dropped along the trail) while waiting for the Finder.
  *
  * Also shares this device's location in the background (per PRD section 5/7 — the Hider
  * broadcasts `hider-position` on the same cadence as the Finder), so the Finder's Navigate
- * screen has something to point at. The permission screen (see permission.ts) already
- * secured Geolocation access before this screen mounts.
+ * screen has something to point at once the trail is exhausted. The permission screen (see
+ * permission.ts) already secured Geolocation access before this screen mounts.
  */
-
-const POSITION_BROADCAST_INTERVAL_MS = 2500;
-
-const COLUMNS = 14;
-
-const PALETTE = [
-  "#f06b6b", // coral
-  "#ffb84d", // amber
-  "#8cd98c", // mint
-  "#66b3ff", // cyan
-  "#ffffff", // white
-];
 
 export interface HiderWaitHandle {
   stop: () => void;
@@ -59,106 +47,22 @@ export function renderHiderWait(app: HTMLElement): HiderWaitHandle {
   `;
 
   const canvas = app.querySelector<HTMLCanvasElement>("#draw-canvas")!;
-  const ctx = canvas.getContext("2d")!;
   const resetBtn = app.querySelector<HTMLButtonElement>("#reset")!;
   const sendBtn = app.querySelector<HTMLButtonElement>("#send")!;
   const toast = app.querySelector<HTMLDivElement>("#toast")!;
 
-  let cells = new Set<number>();
-  let currentColor = randomColor();
-  let cellSize = 0;
-  let rowCount = 0;
-  let lastPoint: { x: number; y: number } | null = null;
+  const grid = new PixelDrawGrid(canvas);
 
-  function resize() {
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cellSize = rect.width / COLUMNS;
-    rowCount = Math.max(4, Math.ceil(rect.height / cellSize));
-    draw();
-  }
-
-  function draw() {
-    const rect = canvas.getBoundingClientRect();
-    ctx.clearRect(0, 0, rect.width, rect.height);
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, rect.width, rect.height);
-    ctx.fillStyle = currentColor;
-    ctx.strokeStyle = "rgba(0,0,0,0.3)";
-    ctx.lineWidth = 1;
-    for (const index of cells) {
-      const col = index % COLUMNS;
-      const row = Math.floor(index / COLUMNS);
-      const x = col * cellSize;
-      const y = row * cellSize;
-      ctx.fillRect(x, y, cellSize, cellSize);
-      ctx.strokeRect(x, y, cellSize, cellSize);
-    }
-  }
-
-  function paintAt(x: number, y: number) {
-    const col = Math.floor(x / cellSize);
-    const row = Math.floor(y / cellSize);
-    if (col < 0 || col >= COLUMNS || row < 0 || row >= rowCount) return;
-    cells.add(row * COLUMNS + col);
-  }
-
-  function paintStroke(x: number, y: number) {
-    const start = lastPoint ?? { x, y };
-    const steps = Math.max(1, Math.floor(Math.max(Math.abs(x - start.x), Math.abs(y - start.y)) / (cellSize / 2)));
-    for (let step = 0; step <= steps; step++) {
-      const t = step / steps;
-      paintAt(start.x + (x - start.x) * t, start.y + (y - start.y) * t);
-    }
-    lastPoint = { x, y };
-    draw();
-  }
-
-  function pointerPos(e: PointerEvent): { x: number; y: number } {
-    const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  }
-
-  let painting = false;
-  canvas.onpointerdown = (e) => {
-    painting = true;
-    canvas.setPointerCapture(e.pointerId);
-    const { x, y } = pointerPos(e);
-    lastPoint = null;
-    paintStroke(x, y);
-  };
-  canvas.onpointermove = (e) => {
-    if (!painting) return;
-    const { x, y } = pointerPos(e);
-    paintStroke(x, y);
-  };
-  canvas.onpointerup = () => {
-    painting = false;
-    lastPoint = null;
-  };
-  canvas.onpointercancel = () => {
-    painting = false;
-    lastPoint = null;
-  };
-
-  resetBtn.onclick = () => {
-    cells = new Set();
-    draw();
-  };
+  resetBtn.onclick = () => grid.clear();
 
   sendBtn.onclick = () => {
-    if (cells.size === 0) return;
+    if (!grid.hasDrawing()) return;
     session.channel?.send({
       type: "funsie-sent",
-      cells: Array.from(cells),
-      color: currentColor,
+      cells: grid.getCells(),
+      color: grid.getColor(),
     });
-    cells = new Set();
-    currentColor = randomColor();
-    draw();
+    grid.clear();
     showToast();
   };
 
@@ -171,39 +75,14 @@ export function renderHiderWait(app: HTMLElement): HiderWaitHandle {
     }, 1200);
   }
 
-  window.addEventListener("resize", resize);
-  resize();
-
-  const positionReady = createThrottle(POSITION_BROADCAST_INTERVAL_MS);
-  const stopWatchingPosition = watchPosition(
-    (pos) => {
-      if (!positionReady()) return;
-      const event: HiderPositionEvent = {
-        type: "hider-position",
-        lat: pos.coords.latitude,
-        lon: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
-        updatedAt: Date.now(),
-      };
-      session.channel?.send(event);
-    },
-    () => {
-      // Silently retry on the next watchPosition tick — the Hider's screen has no
-      // status line to surface this on, and permission.ts already handled the "denied"
-      // case before this screen could ever mount.
-    }
-  );
+  const stopSharingPosition = startHiderPositionSharing();
 
   return {
     stop: () => {
-      window.removeEventListener("resize", resize);
-      stopWatchingPosition();
+      grid.destroy();
+      stopSharingPosition();
     },
   };
-}
-
-function randomColor(): string {
-  return PALETTE[Math.floor(Math.random() * PALETTE.length)]!;
 }
 
 function initials(name: string): string {
