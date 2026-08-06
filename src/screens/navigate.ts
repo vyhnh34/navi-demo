@@ -8,11 +8,18 @@ import { sectorCenterDegrees, snapSector, type Sector } from "../lib/compassSect
 import { showFunsieCollectedOverlay } from "./funsieCollectedOverlay";
 import type { PositionEvent, HiderPositionEvent, FunsieDrop, FunsieDroppedEvent, SyncEvent } from "../types";
 
-const CONFIDENCE_ACCURACY_THRESHOLD_M = 25;
+// Was 25m from the PRD's original pre-testing guess. Real on-site GPS testing measured ~±3m
+// indoors, and the proximity thresholds below were tightened to match — but a 25m gate meant
+// a 10-20m-accuracy reading (common indoors) still got shown as fully trustworthy, driving a
+// specific-looking meter count and direction that didn't hold up. Tightened so a reading that
+// noisy now correctly falls into the low-confidence "getting warmer" state instead. Still
+// worth an on-site tuning pass rather than treating this as final.
+const CONFIDENCE_ACCURACY_THRESHOLD_M = 12;
 const POSITION_BROADCAST_INTERVAL_MS = 2500;
 // Real on-site GPS testing measured ~±3m indoors — tightened from the original wider estimate.
 // Worth another on-site tuning pass rather than treating this as final.
 const PROXIMITY_COLLECT_METERS = 4;
+const PROXIMITY_REUNION_METERS = 4;
 
 export interface NavigateHandle {
   stop: () => void;
@@ -58,6 +65,7 @@ export function renderNavigate(app: HTMLElement, opts: { hasCompass: boolean }):
   let lastDistance: number | null = null;
   let lastTargetKey: string | null = null;
   let overlayActive = false;
+  let closeSent = false;
 
   // Not-yet-collected funsies dropped along the Hider's walk (PRD section 5) — the Finder's
   // navigation target is the nearest of these, recomputed on every position/drop update,
@@ -116,6 +124,14 @@ export function renderNavigate(app: HTMLElement, opts: { hasCompass: boolean }):
         recompute();
       });
       return;
+    }
+
+    // Trail exhausted (targeting the Hider directly) and within reunion range: this only
+    // ever broadcasts the transition — it never mounts the next screen itself, since
+    // main.ts's phase listener is the one path responsible for that (see confirmMeet.ts).
+    if (!targetDrop && distance <= PROXIMITY_REUNION_METERS && !closeSent) {
+      closeSent = true;
+      session.channel?.send({ type: "phase", value: "close" });
     }
 
     const otherAccuracy = targetDrop ? 0 : (hiderPos?.accuracy ?? 0);

@@ -1,5 +1,5 @@
 import { session } from "../lib/state";
-import { GRID_COLUMNS } from "../lib/funsiePattern";
+import { funsieGlyphBoundingBox, drawFunsieGlyph, easeInOutQuad } from "../rendering/funsieGlyph";
 import type { FunsieDrop } from "../types";
 
 /**
@@ -49,15 +49,14 @@ export function showFunsieCollectedOverlay(app: HTMLElement, drop: FunsieDrop, o
   canvas.height = CANVAS_CSS_SIZE * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  const box = boundingBox(drop.cells);
+  const box = funsieGlyphBoundingBox(drop.cells);
 
   let start: number | null = null;
   let raf = 0;
   const frame = (ts: number): void => {
     if (start === null) start = ts;
     const t = Math.min(1, (ts - start) / REVEAL_MS);
-    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    render(ctx, drop, box, eased);
+    drawFunsieGlyph(ctx, drop.cells, drop.color, box, easeInOutQuad(t), CANVAS_CSS_SIZE);
     if (t < 1) raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
@@ -67,48 +66,4 @@ export function showFunsieCollectedOverlay(app: HTMLElement, drop: FunsieDrop, o
     overlay.remove();
     onDone();
   }, REVEAL_MS + HOLD_MS);
-}
-
-interface BoundingBox {
-  minRow: number;
-  maxRow: number;
-  minCol: number;
-  maxCol: number;
-}
-
-function boundingBox(cells: number[]): BoundingBox {
-  let minRow = Infinity;
-  let maxRow = -Infinity;
-  let minCol = Infinity;
-  let maxCol = -Infinity;
-  for (const idx of cells) {
-    const row = Math.floor(idx / GRID_COLUMNS);
-    const col = idx % GRID_COLUMNS;
-    minRow = Math.min(minRow, row);
-    maxRow = Math.max(maxRow, row);
-    minCol = Math.min(minCol, col);
-    maxCol = Math.max(maxCol, col);
-  }
-  if (!Number.isFinite(minRow)) return { minRow: 0, maxRow: 0, minCol: 0, maxCol: 0 };
-  return { minRow, maxRow, minCol, maxCol };
-}
-
-function render(ctx: CanvasRenderingContext2D, drop: FunsieDrop, box: BoundingBox, alpha: number): void {
-  const size = CANVAS_CSS_SIZE;
-  ctx.clearRect(0, 0, size, size);
-  const rows = box.maxRow - box.minRow + 1;
-  const cols = box.maxCol - box.minCol + 1;
-  const cell = size / Math.max(rows, cols);
-  const offsetX = (size - cols * cell) / 2;
-  const offsetY = (size - rows * cell) / 2;
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = drop.color;
-  for (const idx of drop.cells) {
-    const row = Math.floor(idx / GRID_COLUMNS) - box.minRow;
-    const col = (idx % GRID_COLUMNS) - box.minCol;
-    ctx.fillRect(offsetX + col * cell, offsetY + row * cell, cell, cell);
-  }
-  ctx.restore();
 }
