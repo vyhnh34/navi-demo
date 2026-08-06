@@ -77,6 +77,9 @@ function renderDrawOverlay(app: HTMLElement, trail: FunsieTrail, getPos: () => L
         <button id="drop-cancel" aria-label="Cancel" style="pointer-events:auto; background:none; border:none; color:var(--navi-secondary); font-size:15px; padding:8px; cursor:pointer;">Cancel</button>
         <button id="drop-reset" aria-label="Clear drawing" style="pointer-events:auto; background:none; border:none; color:var(--navi-secondary); font-size:20px; padding:8px; cursor:pointer;">&#8634;</button>
       </div>
+      <div style="display:flex; justify-content:center; padding-top:16px;">
+        <span style="font-size:14px; font-weight:600; color:var(--navi-white); background:rgba(0,0,0,0.4); padding:6px 14px; border-radius:999px;">Draw funsies for ${escapeHtml(session.partnerName || "your friend")} to collect</span>
+      </div>
       <div style="flex:1;"></div>
       <div style="display:flex; justify-content:flex-end; padding: 0 16px max(16px, env(safe-area-inset-bottom));">
         <button id="drop-send" aria-label="Drop funsie here" class="pill-button" style="pointer-events:auto; min-width:0;">Drop here</button>
@@ -106,4 +109,10 @@ function renderDrawOverlay(app: HTMLElement, trail: FunsieTrail, getPos: () => L
     grid.destroy();
     overlay.remove();
   }
+}
+
+function escapeHtml(value: string): string {
+  const div = document.createElement("div");
+  div.textContent = value;
+  return div.innerHTML;
 }

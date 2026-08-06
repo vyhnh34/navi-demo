@@ -19,7 +19,12 @@ const POSITION_BROADCAST_INTERVAL_MS = 2500;
 // Real on-site GPS testing measured ~±3m indoors — tightened from the original wider estimate.
 // Worth another on-site tuning pass rather than treating this as final.
 const PROXIMITY_COLLECT_METERS = 4;
-const PROXIMITY_REUNION_METERS = 1;
+// A real side-by-side device test never triggered "close" at 1m — consumer GPS noise alone
+// (independent error on each phone's fix) routinely produces an apparent gap of several
+// meters between two phones that are physically touching, so a 1m gate sits below the noise
+// floor and can go unmet indefinitely. Loosened to something GPS can actually resolve; still
+// worth an on-site tuning pass.
+const PROXIMITY_REUNION_METERS = 6;
 
 export interface NavigateHandle {
   stop: () => void;
@@ -33,7 +38,7 @@ export function renderNavigate(app: HTMLElement, opts: { hasCompass: boolean }):
       <img
         src="/brand/compass-arrow.svg"
         alt=""
-        style="position:absolute; top:50%; left:50%; width:168px; height:189px; transform: translate(-50%, -50%) translateY(-72px); filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6));"
+        style="position:absolute; top:50%; left:50%; width:168px; height:189px; transform: translate(-50%, -50%); filter: drop-shadow(0 2px 3px rgba(0,0,0,0.6));"
       />
 
       <div style="position:absolute; left:0; right:0; bottom:max(28px, env(safe-area-inset-bottom)); display:flex; flex-direction:column; align-items:center; gap:2px;">
@@ -118,6 +123,7 @@ export function renderNavigate(app: HTMLElement, opts: { hasCompass: boolean }):
     if (targetDrop && distance <= PROXIMITY_COLLECT_METERS) {
       overlayActive = true;
       uncollected.delete(targetDrop.id);
+      session.collectedFunsies.push(targetDrop);
       session.channel?.send({ type: "funsie-collected", id: targetDrop.id });
       showFunsieCollectedOverlay(app, targetDrop, () => {
         overlayActive = false;

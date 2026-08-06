@@ -3,6 +3,7 @@ import { randomId } from "./id";
 import { haversineMeters, type LatLonAccuracy } from "./geo";
 import { generateAutoFunsieCells, randomFunsieSeed } from "./funsiePattern";
 import { randomFunsieColor } from "./funsiePalette";
+import { session } from "./state";
 import type { FunsieDrop } from "../types";
 
 const MIN_AUTO_DROP_METERS = 8;
@@ -35,7 +36,10 @@ export class FunsieTrail {
       });
     });
     this.channel.on("funsie-collected", (e) => {
+      if (this.collectedIds.has(e.id)) return;
       this.collectedIds.add(e.id);
+      const drop = this.drops.find((d) => d.id === e.id);
+      if (drop) session.collectedFunsies.push(drop);
     });
   }
 

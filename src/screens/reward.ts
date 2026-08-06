@@ -2,6 +2,7 @@ import { session } from "../lib/state";
 import { funsieGlyphBoundingBox, drawFunsieGlyph, easeInOutQuad } from "../rendering/funsieGlyph";
 import { generateAutoFunsieCells, randomFunsieSeed } from "../lib/funsiePattern";
 import { randomFunsieColor } from "../lib/funsiePalette";
+import { renderFunsiesCollection } from "./funsiesCollection";
 
 /**
  * Ported from the native app's `RewardView` (NaviPhone/Flow/RewardView.swift): "Reward" label,
@@ -12,7 +13,8 @@ import { randomFunsieColor } from "../lib/funsiePalette";
  * (they reached Reunited before drawing anything), the reward is a procedurally generated
  * funsie instead — same generator as the trail's auto drops — so this screen never comes up
  * empty. Native auto-returns to Home after a few seconds — this build has no Home/idle screen
- * to return to, so this is the final screen of the session.
+ * to return to, so this is the final screen of the session; a "Funsies collection" button
+ * takes a local, unsynced detour to look back at everything collected along the trail.
  */
 const REVEAL_MS = 400;
 const CANVAS_CSS_SIZE = 200;
@@ -27,42 +29,52 @@ export function renderReward(app: HTMLElement): RewardHandle {
     color: randomFunsieColor(),
   };
 
-  app.innerHTML = `
-    <div class="screen">
-      <p style="font-size:14px; color: var(--navi-secondary); margin:0;">Reward</p>
-      <canvas id="reward-canvas"></canvas>
-      <p id="reward-label" class="title" style="margin:0;"></p>
-    </div>
-  `;
-
-  const label = app.querySelector<HTMLParagraphElement>("#reward-label")!;
-
-  label.textContent =
-    session.role === "hider"
-      ? `Your gift to ${session.partnerName || "your friend"}`
-      : `From ${session.partnerName || "your friend"}`;
-  label.style.color = reward.color;
-
-  const canvas = app.querySelector<HTMLCanvasElement>("#reward-canvas")!;
-  const ctx = canvas.getContext("2d")!;
-  const dpr = window.devicePixelRatio || 1;
-  canvas.style.width = `${CANVAS_CSS_SIZE}px`;
-  canvas.style.height = `${CANVAS_CSS_SIZE}px`;
-  canvas.width = CANVAS_CSS_SIZE * dpr;
-  canvas.height = CANVAS_CSS_SIZE * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  const box = funsieGlyphBoundingBox(reward.cells);
-
-  let start: number | null = null;
   let raf = 0;
-  const frame = (ts: number): void => {
-    if (start === null) start = ts;
-    const t = Math.min(1, (ts - start) / REVEAL_MS);
-    drawFunsieGlyph(ctx, reward.cells, reward.color, box, easeInOutQuad(t), CANVAS_CSS_SIZE);
-    if (t < 1) raf = requestAnimationFrame(frame);
-  };
-  raf = requestAnimationFrame(frame);
+
+  function showReward(): void {
+    app.innerHTML = `
+      <div class="screen">
+        <p style="font-size:14px; color: var(--navi-secondary); margin:0;">Reward</p>
+        <canvas id="reward-canvas"></canvas>
+        <p id="reward-label" class="title" style="margin:0;"></p>
+        <button id="collection" class="pill-button pill-button--secondary" style="margin-top:16px;">Funsies collection</button>
+      </div>
+    `;
+
+    const label = app.querySelector<HTMLParagraphElement>("#reward-label")!;
+    label.textContent =
+      session.role === "hider"
+        ? `Your gift to ${session.partnerName || "your friend"}`
+        : `From ${session.partnerName || "your friend"}`;
+    label.style.color = reward.color;
+
+    app.querySelector<HTMLButtonElement>("#collection")!.onclick = () => {
+      cancelAnimationFrame(raf);
+      renderFunsiesCollection(app, showReward);
+    };
+
+    const canvas = app.querySelector<HTMLCanvasElement>("#reward-canvas")!;
+    const ctx = canvas.getContext("2d")!;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.width = `${CANVAS_CSS_SIZE}px`;
+    canvas.style.height = `${CANVAS_CSS_SIZE}px`;
+    canvas.width = CANVAS_CSS_SIZE * dpr;
+    canvas.height = CANVAS_CSS_SIZE * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const box = funsieGlyphBoundingBox(reward.cells);
+
+    let start: number | null = null;
+    const frame = (ts: number): void => {
+      if (start === null) start = ts;
+      const t = Math.min(1, (ts - start) / REVEAL_MS);
+      drawFunsieGlyph(ctx, reward.cells, reward.color, box, easeInOutQuad(t), CANVAS_CSS_SIZE);
+      if (t < 1) raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+  }
+
+  showReward();
 
   return {
     stop: () => cancelAnimationFrame(raf),
