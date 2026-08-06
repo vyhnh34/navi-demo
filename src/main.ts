@@ -4,7 +4,7 @@ import { renderPermission } from "./screens/permission";
 import { renderHiderWalking } from "./screens/hiderWalking";
 import { renderHiderWait } from "./screens/hiderWait";
 import { renderNavigate } from "./screens/navigate";
-import { renderConfirmMeet } from "./screens/confirmMeet";
+import { renderFriendArrived } from "./screens/friendArrived";
 import { renderReunited } from "./screens/reunited";
 import { renderReward } from "./screens/reward";
 import { session } from "./lib/state";
@@ -24,17 +24,18 @@ function mount(handle: { stop: () => void }): void {
   stopCurrentScreen = handle.stop;
 }
 
-/** The one path responsible for mounting phase-driven screens — a tap that triggers a
- * transition and the network echo of someone else's tap both flow through here, so neither
- * screen ever mounts the next one directly. Guarded on `currentPhase` so redundant events for
- * a phase already showing (e.g. both clients' Reunited timers each broadcasting "reward")
- * don't restart that screen's reveal animation. */
+/** The one path responsible for mounting phase-driven screens — whichever client triggers a
+ * transition (a proximity detection, an auto-advance timer) and the network echo every other
+ * client receives for it both flow through here, so no screen ever mounts the next one
+ * directly. Guarded on `currentPhase` so redundant events for a phase already showing (e.g.
+ * both clients' FriendArrived timers each broadcasting "reunited") don't restart that
+ * screen's reveal animation. */
 function handlePhase(value: Phase): void {
   if (value === currentPhase) return;
   currentPhase = value;
 
   if (value === "close") {
-    mount(renderConfirmMeet(app));
+    mount(renderFriendArrived(app));
   } else if (value === "reunited") {
     mount(renderReunited(app));
   } else if (value === "reward") {

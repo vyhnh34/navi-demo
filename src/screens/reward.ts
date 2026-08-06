@@ -1,14 +1,18 @@
 import { session } from "../lib/state";
 import { funsieGlyphBoundingBox, drawFunsieGlyph, easeInOutQuad } from "../rendering/funsieGlyph";
+import { generateAutoFunsieCells, randomFunsieSeed } from "../lib/funsiePattern";
+import { randomFunsieColor } from "../lib/funsiePalette";
 
 /**
  * Ported from the native app's `RewardView` (NaviPhone/Flow/RewardView.swift): "Reward" label,
  * a larger glyph reveal, colored label beneath. The native version reveals a rarity-rolled
  * funsie with a rarity-name label; this build has no rarity system, so it reveals the actual
  * hand-drawn reward funsie from hiderWait.ts (captured into `session.rewardFunsie` regardless
- * of role, see main.ts) and labels it by who drew it instead. Native auto-returns to Home
- * after a few seconds — this build has no Home/idle screen to return to, so this is the final
- * screen of the session.
+ * of role, see main.ts) and labels it by who drew it instead. If the Hider never sent one
+ * (they reached Reunited before drawing anything), the reward is a procedurally generated
+ * funsie instead — same generator as the trail's auto drops — so this screen never comes up
+ * empty. Native auto-returns to Home after a few seconds — this build has no Home/idle screen
+ * to return to, so this is the final screen of the session.
  */
 const REVEAL_MS = 400;
 const CANVAS_CSS_SIZE = 200;
@@ -18,7 +22,10 @@ export interface RewardHandle {
 }
 
 export function renderReward(app: HTMLElement): RewardHandle {
-  const reward = session.rewardFunsie;
+  const reward = session.rewardFunsie ?? {
+    cells: generateAutoFunsieCells(randomFunsieSeed()),
+    color: randomFunsieColor(),
+  };
 
   app.innerHTML = `
     <div class="screen">
@@ -29,13 +36,6 @@ export function renderReward(app: HTMLElement): RewardHandle {
   `;
 
   const label = app.querySelector<HTMLParagraphElement>("#reward-label")!;
-
-  if (!reward) {
-    label.textContent = "No funsie made it this time";
-    label.style.color = "var(--navi-secondary)";
-    app.querySelector<HTMLCanvasElement>("#reward-canvas")!.style.display = "none";
-    return { stop: () => {} };
-  }
 
   label.textContent =
     session.role === "hider"

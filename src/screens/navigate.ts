@@ -19,7 +19,7 @@ const POSITION_BROADCAST_INTERVAL_MS = 2500;
 // Real on-site GPS testing measured ~±3m indoors — tightened from the original wider estimate.
 // Worth another on-site tuning pass rather than treating this as final.
 const PROXIMITY_COLLECT_METERS = 4;
-const PROXIMITY_REUNION_METERS = 4;
+const PROXIMITY_REUNION_METERS = 1;
 
 export interface NavigateHandle {
   stop: () => void;
@@ -128,7 +128,7 @@ export function renderNavigate(app: HTMLElement, opts: { hasCompass: boolean }):
 
     // Trail exhausted (targeting the Hider directly) and within reunion range: this only
     // ever broadcasts the transition — it never mounts the next screen itself, since
-    // main.ts's phase listener is the one path responsible for that (see confirmMeet.ts).
+    // main.ts's phase listener is the one path responsible for that (see friendArrived.ts).
     if (!targetDrop && distance <= PROXIMITY_REUNION_METERS && !closeSent) {
       closeSent = true;
       session.channel?.send({ type: "phase", value: "close" });
