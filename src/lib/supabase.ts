@@ -28,6 +28,9 @@ export const supabase = createClient(url, anonKey, {
   },
 });
 
+// TEMPORARY debug hook — remove once the deployed "transport failure" issue is diagnosed.
+(window as any).__debugSupabase = supabase;
+
 function safeStringify(data: unknown): string {
   try {
     return JSON.stringify(data);
