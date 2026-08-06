@@ -3,10 +3,10 @@ import { friendColorForName } from "../lib/friendColor";
 
 /**
  * Ported from the watch app's `FriendArrivedView` (Navi Watch App/Views/FriendArrivedView.swift):
- * a buttonless notification-style beat — eye icon, "{name} is near", "Look around" — shown once
- * the Finder is within the (very tight, PRD-tuned) reunion threshold of the Hider. The native
- * version pairs this with a haptic and never expects a tap; this port matches that — no button,
- * just a brief pulse, then it auto-advances both clients to Reunited.
+ * eye icon, "{name} is near", "Look around". The native version is buttonless (paired with a
+ * haptic, never expects a tap); this build adds an explicit "We've reunited" button on top of
+ * that, since GPS proximity alone can be slow or unreliable to confirm indoors — the auto-
+ * advance timer still fires as a fallback so the screen doesn't stall if nobody taps.
  */
 const AUTO_ADVANCE_MS = 2200;
 
@@ -22,6 +22,7 @@ export function renderFriendArrived(app: HTMLElement): FriendArrivedHandle {
       <div class="pulse-icon">${eyeIcon(color)}</div>
       <p class="title">${escapeHtml(session.partnerName || "Your friend")} is near</p>
       <p class="subtitle">Look around</p>
+      <button id="reunited" class="pill-button" style="margin-top:16px;">We've reunited</button>
     </div>
   `;
 
@@ -30,6 +31,11 @@ export function renderFriendArrived(app: HTMLElement): FriendArrivedHandle {
   const timer = setTimeout(() => {
     session.channel?.send({ type: "phase", value: "reunited" });
   }, AUTO_ADVANCE_MS);
+
+  app.querySelector<HTMLButtonElement>("#reunited")!.onclick = () => {
+    clearTimeout(timer);
+    session.channel?.send({ type: "phase", value: "reunited" });
+  };
 
   return {
     stop: () => clearTimeout(timer),

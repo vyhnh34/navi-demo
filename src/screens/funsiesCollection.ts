@@ -16,10 +16,11 @@ export function renderFunsiesCollection(app: HTMLElement, onBack: () => void): v
   const columns = Math.max(1, Math.min(funsies.length, MAX_COLUMNS));
 
   app.innerHTML = `
-    <div class="screen">
+    <div class="screen" style="justify-content:flex-start; padding-top: max(48px, calc(env(safe-area-inset-top) + 32px));">
       <p class="title">Funsies collected</p>
       <p class="subtitle">${funsies.length} funsie${funsies.length === 1 ? "" : "s"} found along the way</p>
       <div id="funsies-grid" style="display:grid; grid-template-columns: repeat(${columns}, ${TILE_CSS_SIZE}px); gap:12px; justify-content:center; max-width:340px; max-height:50vh; overflow-y:auto; padding:4px;"></div>
+      <div style="flex:1;"></div>
       <button id="back" class="pill-button pill-button--secondary">Back</button>
     </div>
   `;
